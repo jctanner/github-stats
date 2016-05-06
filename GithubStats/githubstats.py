@@ -12,6 +12,7 @@ class GithubStats(object):
     def __init__(self):
         self.filename = None
         self.issues = []
+        self.data = None
         self.stats = None
 
     def load_pickle(self, filename):
@@ -21,6 +22,7 @@ class GithubStats(object):
         with open(filename, 'rb') as f:
             pdata = pickle.load(f)
         self.issues = pdata    
+        #import epdb; epdb.st()
         #print "Merging pickle data into issues ..."     
         #for x in pdata:
         #    if x not in self.issues:
@@ -80,16 +82,23 @@ class GithubStats(object):
                     issue_close_dates.append(timestamp)
                     issue_close_ages.append(age)
 
+        self.data = {
+            'pr_close_dates'        : pr_close_dates,
+            'pr_close_ages'         : pr_close_ages,
+            'pr_merged_dates'       : pr_merged_dates,
+            'pr_merged_count'       : pr_merged_count,
+            'pr_opened_dates'       : pr_opened_dates,
+            'pr_opened_count'       : pr_opened_count,
+            'issue_close_dates'     : issue_close_dates,
+            'issue_close_ages'      : issue_close_ages,
+            'issue_opened_dates'    : issue_opened_dates,
+            'issue_opened_count'    : issue_opened_count
+            }
 
-        """
-        columns = ['date',
-                   'total_opened',
-                   'total_issues_opened',
-                   'total_prs_opened',
-                   'total_issues_closed',
-                   'total_prs_closed' ]
-        result = pd.DataFrame(columns=colums)
-        """
+        return self.process_stats(data=self.data)
+
+
+    def process_stats(self, data=None):
 
         # 2015-03-23T05:24:02
         dformat = '%Y-%m-%dT%H:%M:%S'
@@ -98,8 +107,8 @@ class GithubStats(object):
         # PR closures ...
         #############################################
 
-        ddict = {'date': pr_close_dates,
-                 'age': pr_close_ages}
+        ddict = {'date': data['pr_close_dates'],
+                 'age': data['pr_close_ages']}
         pull_close_df = pd.DataFrame(ddict, columns=['date', 'age'])
         pull_close_df['date'] = pd.to_datetime(pull_close_df['date'], 
                                                format=dformat)
@@ -123,8 +132,8 @@ class GithubStats(object):
         # PR openings ...
         #############################################
 
-        ddict = {'date': pr_opened_dates,
-                 'i': pr_opened_count}
+        ddict = {'date': data['pr_opened_dates'],
+                 'i': data['pr_opened_count']}
         pr_opened_df = pd.DataFrame(ddict, columns=['date', 'i'])
         pr_opened_df['date'] = pd.to_datetime(pr_opened_df['date'], 
                                                format=dformat)
@@ -138,8 +147,8 @@ class GithubStats(object):
         # Issue closures ...
         #############################################
 
-        ddict = {'date': issue_close_dates,
-                 'age': issue_close_ages}
+        ddict = {'date': data['issue_close_dates'],
+                 'age': data['issue_close_ages']}
         issue_close_df = pd.DataFrame(ddict, columns=['date', 'age'])
         issue_close_df['date'] = pd.to_datetime(issue_close_df['date'], 
                                                format=dformat)
@@ -162,8 +171,8 @@ class GithubStats(object):
         # Issue openings ...
         #############################################
 
-        ddict = {'date': issue_opened_dates,
-                 'i': issue_opened_count}
+        ddict = {'date': data['issue_opened_dates'],
+                 'i': data['issue_opened_count']}
         issue_opened_df = pd.DataFrame(ddict, columns=['date', 'i'])
         issue_opened_df['date'] = pd.to_datetime(issue_opened_df['date'], 
                                                format=dformat)
@@ -197,6 +206,7 @@ class GithubStats(object):
                                  result['pr_total_closed']
 
         self.stats = result
+        #import epdb; epdb.st()
         return result
 
 

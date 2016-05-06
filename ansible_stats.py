@@ -24,6 +24,8 @@ def main():
     ############################################
     for fn in fns:
         fname = os.path.join(cachedir, fn[0])
+        if not os.path.isfile(fname):
+            continue
         ghs = GithubStats()
         ghs.load_pickle(fname)
         df = ghs.process_data()
@@ -44,6 +46,8 @@ def main():
 
     # add totals
     for col in xcolumns:
+        if not 'total' in col:
+            continue
         cdf = pd.DataFrame(columns=[col])
         for repo_name in xreponames:
             rcol = col + '__' + repo_name
