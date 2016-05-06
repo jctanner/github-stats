@@ -229,11 +229,25 @@ class GithubStatsAggregator(object):
         # Final result
         xdf = pd.DataFrame()
 
+        # Add the totals columns
         for repoid,reponame in enumerate(self.reponames):
             if repoid == 0:
                 xdf = self.dataframes[repoid].copy()
             else:
                 xdf = xdf.add(self.dataframes[repoid], fill_value=0)        
+
+        # Remove non-totals columns (median/mean/etc)
+        columns = xdf.columns
+        columns = [x for x in columns if not 'total' in x]
+        for col in columns:
+            del xdf[col]
+
+        # Add all columns from dataframes with repo suffix
+        for repoid,reponame in enumerate(self.reponames):
+            cols = self.dataframes[repoid].columns
+            for col in cols:
+                repocol = col + '__' + reponame
+                xdf[repocol] = self.dataframes[repoid][col]
 
         #import epdb; epdb.st()
         self.stats = xdf
