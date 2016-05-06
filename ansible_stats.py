@@ -9,9 +9,9 @@ def main():
     #fns = ['/home/jtanner/workspace/.triage/imsweb_ezmomi.pickle']
 
     cachedir = os.path.expanduser('~/.triage')
-    fns = [('ansible_ansible.pickle', 'ansible-ansible.csv'),
-           ('ansible_ansible-modules-core.pickle', 'ansible-modules-core.csv'),
-           ('ansible_ansible-modules-extras.pickle', 'ansible-modules-extras.csv')]
+    fns = [('ansible_ansible.pickle', 'results/ansible-ansible.csv'),
+           ('ansible_ansible-modules-core.pickle', 'results/ansible-modules-core.csv'),
+           ('ansible_ansible-modules-extras.pickle', 'results/ansible-modules-extras.csv')]
 
     for fn in fns:
         fname = os.path.join(cachedir, fn[0])
