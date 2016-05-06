@@ -100,6 +100,10 @@ class GithubStats(object):
 
     def process_stats(self, data=None):
 
+        # easier for unit testing ...
+        if not data:
+            data = self.data
+
         # 2015-03-23T05:24:02
         dformat = '%Y-%m-%dT%H:%M:%S'
 
@@ -177,9 +181,10 @@ class GithubStats(object):
         issue_opened_df['date'] = pd.to_datetime(issue_opened_df['date'], 
                                                format=dformat)
         issue_opened_df = issue_opened_df.set_index('date')
-        issue_opened_totals = pr_opened_df.resample('M').count()
+        issue_opened_totals = issue_opened_df.resample('M').count()
         issue_opened_totals.columns = ['issue_total_opened']
         issue_opened_totals.fillna(0)
+        #import epdb; epdb.st()
 
         #############################################
         # Aggregate result ...
@@ -210,4 +215,26 @@ class GithubStats(object):
         return result
 
 
+class GithubStatsAggregator(object):
 
+    ''' Join totals for projects with submodules / multi-repos '''
+
+    def __init__(self, dataframes, reponames):
+        self.dataframes = dataframes
+        self.reponames = reponames
+        self.stats = None
+
+    def combine(self):
+
+        # Final result
+        xdf = pd.DataFrame()
+
+        for repoid,reponame in enumerate(self.reponames):
+            if repoid == 0:
+                xdf = self.dataframes[repoid].copy()
+            else:
+                xdf = xdf.add(self.dataframes[repoid], fill_value=0)        
+
+        #import epdb; epdb.st()
+        self.stats = xdf
+        return xdf
