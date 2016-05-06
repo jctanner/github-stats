@@ -12,8 +12,7 @@ class GithubStats(object):
     def __init__(self):
         self.filename = None
         self.issues = []
-        self.data = {}
-        self.stats = {}
+        self.stats = None
 
     def load_pickle(self, filename):
         self.filename = filename
@@ -27,108 +26,178 @@ class GithubStats(object):
         #    if x not in self.issues:
         #        self.issues.append(x)    
 
-    def process_data(self):                
-        print "Processing data and running stats ..."
-        #self.get_pr_close_ages()        
-        self.get_close_ages_by_month(itype='pull')        
-        self.get_close_ages_by_month(itype='issue')        
-        #self.get_issue_close_ages()        
-        #import epdb; epdb.st()
-
-    def get_pr_close_ages(self, start=None, end=None):        
-        ages = []
-        for x in self.issues:
-            if not x.state == 'closed' or not x.pull_request:
-                continue
-            ages.append( x.closed_at - x.created_at )
-        ages = [x.total_seconds() for x in ages]    
-        self.data['pr_ages'] = ages
-        self.stats['pr_close_age_median'] = statistics.median(ages)
-        self.stats['pr_close_age_mean'] = statistics.mean(ages)
-        try:
-            self.stats['pr_close_age_mode'] = statistics.mode(ages)
-        except statistics.StatisticsError:
-            self.stats['pr_close_age_mode'] = None
-        return ages
-
-    def get_issue_close_ages(self, start=None, end=None):        
-        ages = []
-        for x in self.issues:
-            if not x.state == 'closed' or x.pull_request:
-                continue
-            ages.append( x.closed_at - x.created_at )
-        ages = [x.total_seconds() for x in ages]    
-        self.data['issue_ages'] = ages
-        self.stats['issue_close_age_median'] = statistics.median(ages)
-        self.stats['issue_close_age_mean'] = statistics.mean(ages)
-        try:
-            self.stats['issue_close_age_mode'] = statistics.mode(ages)
-        except statistics.StatisticsError:
-            self.stats['issue_close_age_mode'] = None
-        return ages
-
-
-    def get_close_ages_by_month(self, itype='pull'):        
+    def process_data(self):        
 
         # http://stackoverflow.com/a/18677517
 
-        dates = []
-        ages = []
+        pr_close_dates = []
+        pr_close_ages = []
+
+        pr_merged_dates = []
+        pr_merged_count = []
+
+        pr_opened_dates = []
+        pr_opened_count = []
+
+        issue_close_dates = []
+        issue_close_ages = []
+
+        issue_opened_dates = []
+        issue_opened_count = []
 
         for x in self.issues:
-            if itype == 'pull':
-                if not x.state == 'closed' or not x.pull_request:
-                    continue
-            else:        
-                if not x.state == 'closed' or x.pull_request:
-                    continue
-            #print x
-            timestamp = x.closed_at.isoformat()
-            # calc seconds open
-            age = (x.closed_at - x.created_at).total_seconds()
-            # convert seconds to days
-            age, seconds = divmod(age, 24*60*60)
-            dates.append(timestamp)
-            ages.append(age)
-            #import epdb; epdb.st()
 
-        ddict = {'date': dates,
-                 'age': ages}
-        df = pd.DataFrame(ddict, columns=['date', 'age'])
+            itype = "issue"
+            if x.pull_request:
+                itype = "pull"
+
+            # openings
+            opened = x.created_at.isoformat()
+            if itype == 'issue':
+                issue_opened_dates.append(opened)
+                issue_opened_count.append(1)
+            else:    
+                pr_opened_dates.append(opened)
+                pr_opened_count.append(1)
+                        
+
+            # closures
+            if x.state == 'closed':
+                timestamp = x.closed_at.isoformat()
+                # calc seconds open
+                age = (x.closed_at - x.created_at).total_seconds()
+                # convert seconds to days
+                age, seconds = divmod(age, 24*60*60)
+
+                # issue or pr?
+                if itype == 'pull':
+                    pr_close_dates.append(timestamp)
+                    pr_close_ages.append(age)
+
+                    # merged or not? (need PR data)
+                    #import epdb; epdb.st()
+                else:
+                    issue_close_dates.append(timestamp)
+                    issue_close_ages.append(age)
+
+
+        """
+        columns = ['date',
+                   'total_opened',
+                   'total_issues_opened',
+                   'total_prs_opened',
+                   'total_issues_closed',
+                   'total_prs_closed' ]
+        result = pd.DataFrame(columns=colums)
+        """
 
         # 2015-03-23T05:24:02
         dformat = '%Y-%m-%dT%H:%M:%S'
-        df['date'] = pd.to_datetime(df['date'], format=dformat)
 
-        df = df.set_index('date')
+        #############################################
+        # PR closures ...
+        #############################################
+
+        ddict = {'date': pr_close_dates,
+                 'age': pr_close_ages}
+        pull_close_df = pd.DataFrame(ddict, columns=['date', 'age'])
+        pull_close_df['date'] = pd.to_datetime(pull_close_df['date'], 
+                                               format=dformat)
+        pull_close_df = pull_close_df.set_index('date')
 
         # calculate total closures
-        bymonth_totals = df.resample('M').count()
-        bymonth_totals.columns = ['total_closed']
+        pr_close_totals = pull_close_df.resample('M').count()
+        pr_close_totals.columns = ['pr_total_closed']
+        pr_close_totals.fillna(0)
 
         # calculate medians
-        bymonth_medians = df.resample('M').median()
-        bymonth_medians.columns = ['median_age_days']
+        pr_close_medians = pull_close_df.resample('M').median()
+        pr_close_medians.columns = ['pr_close_median_age_days']
 
-        # calcuate means
-        bymonth_means = df.resample('M').mean()
-        bymonth_means.columns = ['mean_age_days']
-
-        # join the columns (axis sets the date as the key)
-        result = pd.concat([bymonth_totals, bymonth_means, bymonth_medians], axis=1)
-
-        # clear NaNs
-        result = result[pd.notnull(result['mean_age_days'])]
-        print result
-        #import epdb; epdb.st()
+        # calculate means
+        pr_close_means = pull_close_df.resample('M').mean()
+        pr_close_means.columns = ['pr_close_mean_age_days']
 
 
+        #############################################
+        # PR openings ...
+        #############################################
+
+        ddict = {'date': pr_opened_dates,
+                 'i': pr_opened_count}
+        pr_opened_df = pd.DataFrame(ddict, columns=['date', 'i'])
+        pr_opened_df['date'] = pd.to_datetime(pr_opened_df['date'], 
+                                               format=dformat)
+        pr_opened_df = pr_opened_df.set_index('date')
+        pr_opened_totals = pr_opened_df.resample('M').count()
+        pr_opened_totals.columns = ['pr_total_opened']
+        pr_opened_totals.fillna(0)
 
 
+        #############################################
+        # Issue closures ...
+        #############################################
 
+        ddict = {'date': issue_close_dates,
+                 'age': issue_close_ages}
+        issue_close_df = pd.DataFrame(ddict, columns=['date', 'age'])
+        issue_close_df['date'] = pd.to_datetime(issue_close_df['date'], 
+                                               format=dformat)
+        issue_close_df = issue_close_df.set_index('date')
 
+        # calculate total closures
+        issue_close_totals = issue_close_df.resample('M').count()
+        issue_close_totals.columns = ['issue_total_closed']
+        issue_close_totals.fillna(0)
 
+        # calculate medians
+        issue_close_medians = issue_close_df.resample('M').median()
+        issue_close_medians.columns = ['issue_close_median_age_days']
 
+        # calculate means
+        issue_close_means = issue_close_df.resample('M').mean()
+        issue_close_means.columns = ['issue_close_mean_age_days']
+
+        #############################################
+        # Issue openings ...
+        #############################################
+
+        ddict = {'date': issue_opened_dates,
+                 'i': issue_opened_count}
+        issue_opened_df = pd.DataFrame(ddict, columns=['date', 'i'])
+        issue_opened_df['date'] = pd.to_datetime(issue_opened_df['date'], 
+                                               format=dformat)
+        issue_opened_df = issue_opened_df.set_index('date')
+        issue_opened_totals = pr_opened_df.resample('M').count()
+        issue_opened_totals.columns = ['issue_total_opened']
+        issue_opened_totals.fillna(0)
+
+        #############################################
+        # Aggregate result ...
+        #############################################
+
+        columns = [pr_opened_totals, 
+                   issue_opened_totals,
+                   pr_close_totals, 
+                   pr_close_medians, 
+                   pr_close_means,
+                   issue_close_totals, 
+                   issue_close_medians, 
+                   issue_close_means ]
+        result = pd.concat(columns, axis=1)
+
+        # Fill all NaNs with zeros ...
+        for col in result.columns:
+            result[col] = result[col].fillna(0)
+
+        # Sum the totals ...
+        result['opened_total'] = result['issue_total_opened'] + \
+                                 result['pr_total_opened']
+        result['closed_total'] = result['issue_total_closed'] + \
+                                 result['pr_total_closed']
+
+        self.stats = result
+        return result
 
 
 
