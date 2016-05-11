@@ -1,5 +1,6 @@
 #!/opt/anaconda2/bin/python
 
+import glob
 import os
 from GithubStats.githubstats import GithubStats
 from GithubStats.githubstats import GithubStatsAggregator
@@ -12,9 +13,9 @@ def main():
     #fns = ['/home/jtanner/workspace/.triage/imsweb_ezmomi.pickle']
 
     cachedir = os.path.expanduser('~/.triage')
-    fns = [('ansible_ansible.pickle', 'results/ansible-ansible.csv'),
-           ('ansible_ansible-modules-core.pickle', 'results/ansible-modules-core.csv'),
-           ('ansible_ansible-modules-extras.pickle', 'results/ansible-modules-extras.csv')]
+    prefixes = [('ansible_ansible', 'results/ansible-ansible.csv'),
+                ('ansible_ansible-modules-core', 'results/ansible-modules-core.csv'),
+                ('ansible_ansible-modules-extras', 'results/ansible-modules-extras.csv')]
 
     reponames = []
     dataframes = []
@@ -22,21 +23,21 @@ def main():
     ############################################
     # Get stats for each individual repo
     ############################################
-    for fn in fns:
-        fname = os.path.join(cachedir, fn[0])
-        if not os.path.isfile(fname):
-            continue
-
-        repo_name = os.path.basename(fn[0]).replace('.pickle', '')
+    for prefix in prefixes[1:2]:
+        globstr = os.path.join(cachedir, prefix[0] + '__*.pickle')
+        pickle_files = glob.glob(globstr)
+        #import epdb; epdb.st()
+        repo_name = os.path.basename(prefix[0])
         reponames.append(repo_name)
 
         ghs = GithubStats()
-        ghs.load_pickle(fname)
+        ghs.load_pickles(pickle_files)
         df = ghs.process_data()
         dataframes.append(df)
         print df.tail(5)
-        df.to_csv(fn[1])
+        df.to_csv(prefix[1])
 
+    '''
     ############################################
     # Aggregate all data
     ############################################
@@ -45,6 +46,7 @@ def main():
     xdf = gha.combine()
     xdf.to_csv('results/ansible_all_repos.csv')
     #import epdb; epdb.st()
+    '''
 
 if __name__ == "__main__":
     main()

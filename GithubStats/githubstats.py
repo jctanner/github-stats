@@ -5,15 +5,28 @@
 import pickle
 import statistics
 from datetime import timedelta
-
 import pandas as pd
 
 class GithubStats(object):
     def __init__(self):
         self.filename = None
+        self.filenames = []
         self.issues = []
         self.data = None
         self.stats = None
+
+    def load_pickles(self, filenames):
+        self.filenames = filenames
+        for fn in self.filenames:
+            pdata = None
+            print "Loading pickle file %s ..." % fn
+            try:
+                with open(fn, 'rb') as f:
+                    pdata = pickle.load(f)
+                self.issues.append(pdata)  
+            except Exception as e:
+                # EmptyIssue isn't going to be known to pickle ...
+                print e
 
     def load_pickle(self, filename):
         self.filename = filename
