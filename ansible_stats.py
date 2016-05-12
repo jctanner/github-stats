@@ -13,9 +13,10 @@ def main():
     #fns = ['/home/jtanner/workspace/.triage/imsweb_ezmomi.pickle']
 
     cachedir = os.path.expanduser('~/.triage')
-    prefixes = [('ansible_ansible', 'results/ansible-ansible.csv'),
-                ('ansible_ansible-modules-core', 'results/ansible-modules-core.csv'),
-                ('ansible_ansible-modules-extras', 'results/ansible-modules-extras.csv')]
+    prefixes = []
+    #prefixes.append(('ansible_ansible', 'results/ansible-ansible.csv'))
+    prefixes.append(('ansible_ansible-modules-core', 'results/ansible-modules-core.csv'))
+    #prefixes.append(('ansible_ansible-modules-extras', 'results/ansible-modules-extras.csv'))
 
     reponames = []
     dataframes = []
@@ -23,7 +24,7 @@ def main():
     ############################################
     # Get stats for each individual repo
     ############################################
-    for prefix in prefixes[1:2]:
+    for prefix in prefixes:
         globstr = os.path.join(cachedir, prefix[0] + '__*.pickle')
         pickle_files = glob.glob(globstr)
         #import epdb; epdb.st()
@@ -31,7 +32,7 @@ def main():
         reponames.append(repo_name)
 
         ghs = GithubStats()
-        ghs.load_pickles(pickle_files)
+        ghs.load_pickles(pickle_files[0:100])
         df = ghs.process_data()
         dataframes.append(df)
         print df.tail(5)
